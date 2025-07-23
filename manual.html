@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<title>NeoBox Manual</title>
+	<link rel="icon" href="favicon.ico" type="image/x-icon" />
+	<meta name="description" content="BeepBox is an online tool for sketching and sharing chiptune melodies. " />
+	<meta name="keywords" content="chiptune, music, melody, composition, tool, square wave, NES, NSF, BeepBox, beepbox" />
+	<meta name="viewport" content="width=700">
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	<meta name="mobile-web-app-capable" content="yes" />
+	<meta name="format-detection" content="telephone=no">
+	<style type="text/css">
+		html {
+            background-color: #000000;
+        }
+        
+        div {
+			margin: 0;
+			padding: 0;
+		}
+		body {
+			font-family: sans-serif;
+			font-size: 16px;
+			color: var(--primary-text, #c5c5c5);	
+		}
+
+		h1 {
+			font-size: 30px;
+			text-align: center;
+		}
+
+		h2 {
+			font-size: 15px;
+			text-align: center;
+		}
+
+		.centerDiv {
+			margin: 0px auto;
+		}
+		h3 {
+			font-size: 15px;
+			text-align: left;
+		}
+
+		.centerDiv {
+			margin: 0px auto;
+		}
+
+		a {
+			color: #8866ff;
+		}
+
+        .toc {
+            color:#8866ff;
+            cursor: pointer;
+        }
+        .toc.selected {
+            color:#bfafff;
+            font-style: italic;
+
+        }
+        .article {
+            display: none;
+            flex-direction: column; 
+            gap: 16px; 
+            text-align: left; 
+            font-size: 16px; 
+            overflow-y: scroll;
+        }
+        .article.active {
+            display: flex;;
+        }
+	</style>
+</head>
+
+<body style="display: flex; justify-content: center;">
+    <div style="border:3px #444 solid; max-width: 862px; display: flex; flex-direction: column; padding: 2em;">
+        <h1 class="modTitle">
+            Neo NepBox User Manual
+        </h1>
+        <div style="display: flex;gap: 10px;">
+            <div style="border-right: 2px #444 solid;padding-right: 1em;width: 100px; display: flex; flex-direction: column;">
+                <div id="introTOC" class="toc selected" onclick="setTOC('intro')">Introduction</div>
+                <div id="instTOC" class="toc" onclick="setTOC('inst')">Instructions</div>
+                <div id="bindTOC" class="toc" onclick="setTOC('bind')">Keybinds</div>
+                <div id="aboutTOC" class="toc" onclick="setTOC('about')">About</div>
+            </div>
+            <div class="articles">
+                <div id="introArticle" class="article active"> 
+                    <div style="font-size: 1.5em">
+                        <div>Introduction</div>
+                    </div>
+                    <div>BeepBox is an online tool for sketching and sharing chiptune melodies. 
+                        Neo NepBox (or NeoBox for short) is a mod of ModBox which aims to expand upon and reimagine the mod to new heights.</div>
+                    <div>This is a specialized manual explaining the basics of using NeoBox.</div>
+                    <div>All song data is packaged into the URL at the top of your browser. 
+                        When you make changes to the song, the URL is updated to reflect your changes. 
+                        When you are satisfied with your song, just copy and paste the URL to save and share your song!
+                    </div>
+                </div>
+                <div id="instArticle" class="article"> 
+                    <div style="font-size: 1.5em">
+                        <div>Instructions</div>
+                    </div>
+                    <div>You can add or remove notes by clicking on the gray rows at the top. NeoBox automatically plays the notes out loud for you. Try it!</div>
+                    <div>Notes go into patterns, and you can edit one pattern at a time. Those numbered boxes at the bottom of the editor are the different patterns you can edit. Click the other boxes to move to a different part of the song, or click the arrows on the currently selected box to swap which pattern is played during that part of the song.</div>
+                    <div>There are four rows of patterns that NeoBox can play simultaneously, and each row has its own set of patterns. The first three rows can play melodies and the bottom row is for drums.</div>
+                    <div>The purple loop underneath the numbered boxes controls which part of the song is currently repeating. Move the loop to listen to a different part of the song, or drag the ends to expand the loop to include the whole song.</div>
+                    <div>When you are satisfied with your song, just copy and paste the URL to save and share your song!</div>
+                </div>
+                <div id="bindArticle" class="article"> 
+                    <div style="font-size: 1.5em">
+                        <div>Keybinds</div>
+                    </div>
+                    <div>When NeoBox has focus (click on its interface above), you can use these keyboard shortcuts:</div><ul>
+                        <li>Spacebar: Pause or Resume</li>
+                        <li>Z: Undo</li>
+                        <li>Y or Shift+Z: Redo</li>
+                        <li>C: Copy the current pattern</li>
+                        <li>V: Paste the current pattern</li>
+                        <li>X: Cut the current pattern</li>
+                        <p></p>
+                        <li>Q: Open the Custom Song Settings Prompt</li>
+                        <li>Ctrl+S: Open the Export Song Prompt</li>
+                        <li>Ctrl+O: Open the Import Song Prompt</li>
+                        <p></p>
+                        <li>Enter: Add a bar at the current position</li>
+                        <li>Ctrl+Enter: Add a channel at the current position</li>
+                        <li>Backspace: Remove a bar at the current position</li>
+                        <li>Ctrl+Backspace: Remove a channel at the current position</li>
+                        <p></p>
+                        <li>M: Mute the current instrument</li>
+                        <li>Shift+M: Mute the current channel</li>
+                        <li>S: Mute all other channels</li>
+                        <p></p>
+                        <li>[ ]: Move the playhead backward and forward</li>
+                        <li>F: Move the playhead back to the beginning of the song</li>
+                        <li>Shift+F: Move the playhead back to the beginning of the loop bar</li>
+                        <li>Arrow Keys: Change which bar is selected</li>
+                        <li>0-9: Reassign a pattern to the currently selected bar</li>
+                        <li>Drag vertically from an existing note to bend its pitch, or drag vertically from above or below the note to adjust its volume.</li>
+                    </ul>
+                    <div>ModBox has many more features. Enabling Advanced Settings via the Prefernces Menu unlocks much more of Modbox's features! </div>
+                </div>
+                <div id="aboutArticle" class="article"> 
+                    <div style="display: flex; flex-direction: column; gap: 16px; text-align: left; font-size: 16px; overflow-y: scroll;">
+                        <div style="font-size: 1.5em">
+                            <div>About</div>
+                        </div>
+                        <div>
+                            BeepBox is developed by John Nesky, also known as shaktool. Modded Beepbox is developed by Quirby64, Theepicosity, Fillygroove, and DARE. NepBox is developed by Neputendo, and Neo NepBox is developed by choptop84.
+                        </div>
+                        <div>
+                            BeepBox, Modded Beepbox, and NepBox do not claim ownership over songs created with it, so original songs belong to their authors.
+                        </div>
+                        <div>
+                            Neither John Nesky, BeepBox, the Modded BeepBox Dev Team, nor the Neo NepBox Dev Team assume responsibility for any copyrighted material played on BeepBox. No songs are ever received, recorded, or distributed by BeepBox, Modded Beepbox, or Neo NepBox's servers. All song data is contained in the URL after the hash (#) mark, and BeepBox running inside your browser converts that data into sound waves. </p>
+                            You can download and use the
+                            <a href="https://github.com/choptop84/neobox-source">source code</a>
+                            under the MIT license.
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+        
+    </div>
+
+    <script> 
+        let introTOC = document.getElementById("introTOC");
+        let instTOC = document.getElementById("instTOC");
+        let bindTOC = document.getElementById("bindTOC");
+        let aboutTOC = document.getElementById("aboutTOC");
+
+        let introArticle = document.getElementById("introArticle");
+        let instArticle = document.getElementById("instArticle");
+        let bindArticle = document.getElementById("bindArticle");
+        let aboutArticle = document.getElementById("aboutArticle");
+
+        function setTOC(tocID) {
+            introTOC.setAttribute("class", "toc"); 
+            instTOC.setAttribute("class", "toc");
+            bindTOC.setAttribute("class", "toc");
+            aboutTOC.setAttribute("class", "toc");
+
+            introArticle.setAttribute("class", "article");
+            instArticle.setAttribute("class", "article");
+            bindArticle.setAttribute("class", "article");
+            aboutArticle.setAttribute("class", "article");
+
+            document.getElementById(tocID+"TOC").setAttribute("class", "toc selected"); 
+            document.getElementById(tocID+"Article").setAttribute("class", "article active"); 
+        }
+    </script>
+
+</body>
+
+</html>
