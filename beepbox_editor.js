@@ -291,7 +291,8 @@ var beepbox = (function (exports) {
     ]);
     Config.mixNames = ["Type A (B & S)", "Type B (M)", "Type C"];
     Config.sampleRateNames = ["44100kHz", "48000kHz", "default", "×4", "×2", "÷2", "÷4", "÷8", "÷16"];
-    Config.tempoSteps = 24;
+    Config.tempoMin = 1;
+    Config.tempoMax = 500;
     Config.reverbRange = 5;
     Config.blendRange = 4;
     Config.riffRange = 11;
@@ -1230,7 +1231,7 @@ var beepbox = (function (exports) {
             this.sampleRate = 2;
             this.loopStart = 0;
             this.loopLength = 4;
-            this.tempo = 7;
+            this.tempo = 151;
             this.reverb = 0;
             this.blend = 0;
             this.riff = 0;
@@ -1295,7 +1296,7 @@ var beepbox = (function (exports) {
             buffer.push(107, base64IntToCharCode[this.key]);
             buffer.push(108, base64IntToCharCode[this.loopStart >> 6], base64IntToCharCode[this.loopStart & 0x3f]);
             buffer.push(101, base64IntToCharCode[(this.loopLength - 1) >> 6], base64IntToCharCode[(this.loopLength - 1) & 0x3f]);
-            buffer.push(116, base64IntToCharCode[this.tempo]);
+            buffer.push(116, base64IntToCharCode[this.tempo >> 6], base64IntToCharCode[this.tempo & 63]);
             buffer.push(109, base64IntToCharCode[this.reverb]);
             buffer.push(120, base64IntToCharCode[this.blend]);
             buffer.push(121, base64IntToCharCode[this.riff]);
@@ -1615,13 +1616,18 @@ var beepbox = (function (exports) {
                     }
                 }
                 else if (command == 116) {
-                    if (fromOld && beforeFour) {
-                        this.tempo = [1, 4, 7, 10][base64CharCodeToInt[compressed.charCodeAt(charIndex++)]];
+                    if (fromOld) {
+                        if (beforeFour) {
+                            this.tempo = [1, 4, 7, 10][base64CharCodeToInt[compressed.charCodeAt(charIndex++)]];
+                        }
+                        else {
+                            this.tempo = [88, 95, 103, 111, 120, 130, 140, 151, 163, 176, 190, 206, 222, 240, 259][base64CharCodeToInt[compressed.charCodeAt(charIndex++)]];
+                        }
                     }
                     else {
-                        this.tempo = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                        this.tempo = (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) + base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
                     }
-                    this.tempo = clamp(0, Config.tempoSteps, this.tempo);
+                    this.tempo = clamp(Config.tempoMin, Config.tempoMax, this.tempo);
                 }
                 else if (command == 109) {
                     this.reverb = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
@@ -2271,9 +2277,8 @@ var beepbox = (function (exports) {
                 }
             }
             if (jsonObject.beatsPerMinute != undefined) {
-                const bpm = jsonObject.beatsPerMinute | 0;
-                this.tempo = Math.round(4.0 + 9.0 * Math.log(bpm / 120) / Math.LN2);
-                this.tempo = clamp(0, Config.tempoSteps, this.tempo);
+                this.tempo = jsonObject.beatsPerMinute;
+                this.tempo = clamp(Config.tempoMin, Config.tempoMax, this.tempo);
             }
             if (jsonObject.reverb != undefined) {
                 this.reverb = clamp(0, Config.reverbRange, jsonObject.reverb | 0);
@@ -2641,7 +2646,7 @@ var beepbox = (function (exports) {
             return pattern == null ? 0 : instrument.volume;
         }
         getBeatsPerMinute() {
-            return Math.round(120.0 * Math.pow(2.0, (-4.0 + this.tempo) / 9.0));
+            return this.tempo;
         }
         getChannelFingerprint(bar) {
             const channelCount = this.getChannelCount();
@@ -10944,7 +10949,8 @@ var beepbox = (function (exports) {
             this._mixSelectRow = div({ class: "selectRow" }, this._mixHint, this._mixSelect);
             this._instrumentTypeHint = a({ class: "hintButton" }, div({}, "?"));
             this._keySelect = buildOptions(select({}), Config.keys.map(key => key.name).reverse());
-            this._tempoSlider = new Slider(input({ style: "margin: 0px;", type: "range", min: "0", max: Config.tempoSteps - 1, value: "7", step: "1" }), this._doc, (oldValue, newValue) => new ChangeTempo(this._doc, oldValue, newValue));
+            this._tempoStepper = input({ class: "numberInput", style: "margin-left:0.5em", type: "number", min: Config.tempoMin, max: Config.tempoMax });
+            this._tempoSlider = new Slider(input({ style: "margin: 0px; width: 60px", type: "range", min: Config.tempoMin, max: Config.tempoMax, value: "160", step: "1" }), this._doc, (oldValue, newValue) => new ChangeTempo(this._doc, oldValue, newValue));
             this._reverbSlider = new Slider(input({ style: "margin: 0px;", type: "range", min: "0", max: Config.reverbRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeReverb(this._doc, oldValue, newValue));
             this._blendSlider = new Slider(input({ style: "width: 9em; margin: 0px;", type: "range", min: "0", max: Config.blendRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeBlend(this._doc, oldValue, newValue));
             this._riffSlider = new Slider(input({ style: "width: 9em; margin: 0px;", type: "range", min: "0", max: Config.riffRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeRiff(this._doc, oldValue, newValue));
@@ -10996,7 +11002,7 @@ var beepbox = (function (exports) {
             this._instSettingsButton = button({ style: "flex: 1;" }, "Instrument");
             this._settingsTabs = div({ style: "display: flex; gap: 3px;" }, this._songSettingsButton, this._instSettingsButton);
             this._instrumentSettingsGroup = div({ style: "display:none;" }, this._instrumentSelectRow, this._instrumentTypeSelectRow, this._instrumentMVolumeSliderRow, this._instrumentVolumeSliderRow, this._waveSelectRow, div({ class: "selectRow" }, span({}, div({}, "Transitions: ")), div({ class: "selectContainer" }, this._transitionSelect)), this._filterSelectRow, this._chorusSelectRow, this._effectSelectRow, this._algorithmSelectRow, this._phaseModGroup, this._feedbackRow1, this._feedbackRow2);
-            this._songSettingsGroup = div({ class: "editor-song-settings" }, div({ class: "selectRow" }, span({}, div({}, "Scale: ")), div({ class: "selectContainer", style: "margin: 3px 0; text-align: center; color: #ccc;" }, this._scaleSelect)), div({ class: "selectRow" }, span({}, div({}, "Key: ")), div({ class: "selectContainer", style: "margin: 3px 0; text-align: center; color: #ccc;" }, this._keySelect)), div({ class: "selectRow" }, span({}, div({}, "Tempo: ")), this._tempoSlider.input), div({ class: "selectRow" }, span({}, div({}, "Reverb: ")), this._reverbSlider.input), div({ class: "selectRow" }, span({}, div({}, "Rhythm: ")), div({ class: "selectContainer", style: "margin: 3px 0; text-align: center; color: #ccc;" }, this._partSelect)));
+            this._songSettingsGroup = div({ class: "editor-song-settings" }, div({ class: "selectRow" }, span({}, div({}, "Scale: ")), div({ class: "selectContainer", style: "margin: 3px 0; text-align: center; color: #ccc;" }, this._scaleSelect)), div({ class: "selectRow" }, span({}, div({}, "Key: ")), div({ class: "selectContainer", style: "margin: 3px 0; text-align: center; color: #ccc;" }, this._keySelect)), div({ class: "selectRow" }, span({}, div({}, "Tempo: ")), div({ style: "display: flex; flex-direction: row;" }, this._tempoSlider.input, this._tempoStepper)), div({ class: "selectRow" }, span({}, div({}, "Reverb: ")), this._reverbSlider.input), div({ class: "selectRow" }, span({}, div({}, "Rhythm: ")), div({ class: "selectContainer", style: "margin: 3px 0; text-align: center; color: #ccc;" }, this._partSelect)));
             this._advancedInstrumentSettingsGroup = div({}, this._advancedInstrumentSettingsLabel, this._ipanSliderRow, this._harmSelectRow, this._octoffSelectRow, this._fmChorusSelectRow);
             this._promptContainer = div({ class: "promptContainer", id: "promptContainer", style: "display: none;" });
             this._advancedSongSettings = div({ class: "editor-song-settings", style: "margin: 0px 5px;" }, div({ style: "margin: 3px 0; text-align: center;" }, div({}, "Advanced Song Settings")), div({ class: "selectRow" }, span({}, div({}, "Mix: ")), div({ class: "selectContainer" }, this._mixSelectRow)), div({ class: "selectRow" }, span({}, div({}, "Sample Rate: ")), div({ class: "selectContainer" }, this._sampleRateSelect)), div({ class: "selectRow" }, span({}, div({}, "Blending: ")), this._blendSlider.input), div({ class: "selectRow" }, span({}, div({}, "Riff: ")), this._riffSlider.input), div({ class: "selectRow" }, span({}, div({}, "Detune: ")), this._detuneSlider.input), div({ class: "selectRow" }, span({}, div({}, "Muff: ")), this._muffSlider.input));
@@ -11061,6 +11067,7 @@ var beepbox = (function (exports) {
                 setSelectedIndex(this._sampleRateSelect, this._doc.song.sampleRate);
                 setSelectedIndex(this._keySelect, Config.keys.length - 1 - this._doc.song.key);
                 this._tempoSlider.updateValue(this._doc.song.tempo);
+                this._tempoStepper.value = String(this._doc.song.tempo);
                 this._tempoSlider.input.title = this._doc.song.getBeatsPerMinute() + " beats per minute";
                 this._reverbSlider.updateValue(this._doc.song.reverb);
                 this._advancedSettingsContainer.style.display = this._doc.prefs.advancedSettings ? "" : "none";
@@ -11262,6 +11269,9 @@ var beepbox = (function (exports) {
                     this._iMmuteButton.innerText = "◎";
                 }
                 this.whenUpdated();
+            };
+            this._whenSetTempo = () => {
+                this._doc.record(new ChangeTempo(this._doc, -1, parseInt(this._tempoStepper.value) | 0));
             };
             this._captureNumberKeys = (event) => {
                 switch (event.keyCode) {
@@ -11741,7 +11751,9 @@ var beepbox = (function (exports) {
             this._mixHint.addEventListener("click", this._openMixPrompt);
             this._chorusHint.addEventListener("click", this._openChorusPrompt);
             this._archiveHint.addEventListener("click", this._openArchivePrompt);
+            this._tempoStepper.addEventListener("change", this._whenSetTempo);
             this._instrumentInput.addEventListener("keydown", this._captureNumberKeys, false);
+            this._tempoStepper.addEventListener("keydown", this._captureNumberKeys, false);
             this._editorBox.addEventListener("mousedown", this._refocusStage);
             this.mainLayer.addEventListener("keydown", this._whenKeyPressed);
             this._songSettingsButton.addEventListener("click", this._setSongSettings);
