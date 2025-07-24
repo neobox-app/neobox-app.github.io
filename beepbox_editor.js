@@ -11978,11 +11978,11 @@ var beepbox = (function (exports) {
         constructor() {
             this.autoPlay = localStorage.getItem("autoPlay") == "true";
             this.autoFollow = localStorage.getItem("autoFollow") == "true";
-            this.showFifth = localStorage.getItem("showFifth") == "true";
+            this.showFifth = localStorage.getItem("showFifth") != "false";
             this.showMore = localStorage.getItem("showMore") == "true";
-            this.showLetters = localStorage.getItem("showLetters") == "true";
+            this.showLetters = localStorage.getItem("showLetters") != "false";
             this.showChannels = localStorage.getItem("showChannels") == "true";
-            this.showScrollBar = localStorage.getItem("showScrollBar") == "true";
+            this.showScrollBar = localStorage.getItem("showScrollBar") != "false";
             this.showVolumeBar = localStorage.getItem("showVolumeBar") == "true";
             this.advancedSettings = localStorage.getItem("advancedSettings") != "false";
             this.visibleOctaves = Preferences.defaultVisibleOctaves;
