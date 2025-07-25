@@ -8221,8 +8221,9 @@ var beepbox = (function (exports) {
 
     const { div: div$e } = HTML;
     class OctaveScrollBar {
-        constructor(_doc) {
+        constructor(_doc, _piano) {
             this._doc = _doc;
+            this._piano = _piano;
             this._editorWidth = 20;
             this._editorHeight = 481;
             this._notchHeight = 4.0;
@@ -8338,6 +8339,7 @@ var beepbox = (function (exports) {
             this._documentChanged = () => {
                 this._barBottom = this._editorHeight - (this._octaveHeight * this._doc.song.channels[this._doc.channel].octave);
                 this._render();
+                this._piano.forceRender();
             };
             this._doc.notifier.watch(this._documentChanged);
             this._documentChanged();
@@ -8533,8 +8535,14 @@ var beepbox = (function (exports) {
                             this._pianoKeys[j].classList.remove("disabled");
                             this._pianoLabels[j].style.display = "";
                             const label = this._pianoLabels[j];
+                            if ((j % 12) == 0) {
+                                label.style.transform = "translate(-5px, 0px)";
+                            }
+                            else {
+                                label.style.transform = "translate(0px, 0px)";
+                            }
                             label.style.color = Config.keys[pitchNameIndex].isWhiteKey ? "black" : "white";
-                            label.textContent = Piano.getPitchName(pitchNameIndex, j);
+                            label.textContent = Piano.getPitchName(pitchNameIndex, j, this._doc.getBaseVisibleOctave(this._doc.channel));
                         }
                     }
                 }
@@ -8553,6 +8561,10 @@ var beepbox = (function (exports) {
             this.container.addEventListener("touchmove", this._whenTouchMoved);
             this.container.addEventListener("touchend", this._whenTouchReleased);
             this.container.addEventListener("touchcancel", this._whenTouchReleased);
+        }
+        forceRender() {
+            this._renderedScale = -1;
+            this._documentChanged();
         }
         _updateCursorPitch() {
             const scale = Config.scales[this._doc.song.scale].flags;
@@ -8602,7 +8614,7 @@ var beepbox = (function (exports) {
                 }
             }
         }
-        static getPitchName(pitchNameIndex, scaleIndex) {
+        static getPitchName(pitchNameIndex, scaleIndex, baseVisibleOctave) {
             let text;
             if (Config.keys[pitchNameIndex].isWhiteKey) {
                 text = Config.keys[pitchNameIndex].name;
@@ -8616,6 +8628,9 @@ var beepbox = (function (exports) {
                 else if (shiftDir == -1) {
                     text += "♯";
                 }
+            }
+            if (scaleIndex % 12 == 0) {
+                text += Math.floor(scaleIndex / 12) + baseVisibleOctave;
             }
             return text;
         }
@@ -10697,6 +10712,9 @@ var beepbox = (function (exports) {
 			overflow-y: hidden;
 		}
 
+		.advanced-settings-area {
+		overflow-y: scroll;
+		}
 
 		.centerDiv {
 			width: unset !important;
@@ -10785,6 +10803,11 @@ var beepbox = (function (exports) {
 		.beepboxEditor .selectContainer.menu::after {
 			content: none !important;
 		}
+
+		.beepboxEditor .settings-area .editor-widgets .editor-menus {
+			width: 8em !important;
+		}
+
 		`,
     };
     Layout._styleElement = document.head.appendChild(HTML.style({ type: "text/css" }));
@@ -10922,8 +10945,8 @@ var beepbox = (function (exports) {
             this._trackContainer = div({ class: "trackContainer" }, this._trackEditor.container, this._loopEditor.container);
             this._trackVisibleArea = div({ style: "position: absolute; width: 100%; height: 100%; pointer-events: none;" });
             this._barScrollBar = new BarScrollBar(this._doc, this._trackContainer);
-            this._octaveScrollBar = new OctaveScrollBar(this._doc);
             this._piano = new Piano(this._doc);
+            this._octaveScrollBar = new OctaveScrollBar(this._doc, this._piano);
             this._editorBox = div({ class: "editorBox", style: "height: 481px; display: flex; flex-direction: row; margin-bottom: 6px;" }, this._piano.container, this._patternEditor.container, this._octaveScrollBar.container);
             this._trackAndMuteContainer = div({ class: "trackAndMuteContainer prefers-big-scrollbars" }, this._trackContainer, this._trackVisibleArea);
             this._trackEditorBox = div({ class: "track-area" }, this._trackAndMuteContainer, this._barScrollBar.container);
@@ -10946,30 +10969,30 @@ var beepbox = (function (exports) {
             this._sampleRateSelect = buildOptions(select({}), Config.sampleRateNames);
             this._mixHint = a({ class: "hintButton" }, div({}, "?"));
             this._archiveHint = a({ class: "hintButton" }, div({}, "?"));
-            this._mixSelectRow = div({ class: "selectRow" }, this._mixHint, this._mixSelect);
+            this._mixSelectRow = div({ class: "selectRow" }, this._mixSelect);
             this._instrumentTypeHint = a({ class: "hintButton" }, div({}, "?"));
             this._keySelect = buildOptions(select({}), Config.keys.map(key => key.name).reverse());
             this._tempoStepper = input({ class: "numberInput", style: "margin-left:0.5em", type: "number", min: Config.tempoMin, max: Config.tempoMax });
-            this._tempoSlider = new Slider(input({ style: "margin: 0px; width: 60px", type: "range", min: Config.tempoMin, max: Config.tempoMax, value: "160", step: "1" }), this._doc, (oldValue, newValue) => new ChangeTempo(this._doc, oldValue, newValue));
+            this._tempoSlider = new Slider(input({ style: "margin: 0px;", type: "range", min: Config.tempoMin, max: Config.tempoMax, value: "160", step: "1" }), this._doc, (oldValue, newValue) => new ChangeTempo(this._doc, oldValue, newValue));
             this._reverbSlider = new Slider(input({ style: "margin: 0px;", type: "range", min: "0", max: Config.reverbRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeReverb(this._doc, oldValue, newValue));
-            this._blendSlider = new Slider(input({ style: "width: 9em; margin: 0px;", type: "range", min: "0", max: Config.blendRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeBlend(this._doc, oldValue, newValue));
-            this._riffSlider = new Slider(input({ style: "width: 9em; margin: 0px;", type: "range", min: "0", max: Config.riffRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeRiff(this._doc, oldValue, newValue));
-            this._detuneSlider = new Slider(input({ style: "width: 9em; margin: 0px;", type: "range", min: "0", max: Config.detuneRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeDetune(this._doc, oldValue, newValue));
-            this._muffSlider = new Slider(input({ style: "width: 9em; margin: 0px;", type: "range", min: "0", max: Config.muffRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeMuff(this._doc, oldValue, newValue));
-            this._imuteButton = button({ style: "width: 27px;", type: "button" });
-            this._iMmuteButton = button({ style: "width: 27px;", type: "button" });
+            this._blendSlider = new Slider(input({ style: "margin: 0px;", type: "range", min: "0", max: Config.blendRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeBlend(this._doc, oldValue, newValue));
+            this._riffSlider = new Slider(input({ style: "margin: 0px;", type: "range", min: "0", max: Config.riffRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeRiff(this._doc, oldValue, newValue));
+            this._detuneSlider = new Slider(input({ style: "margin: 0px;", type: "range", min: "0", max: Config.detuneRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeDetune(this._doc, oldValue, newValue));
+            this._muffSlider = new Slider(input({ style: "margin: 0px;", type: "range", min: "0", max: Config.muffRange - 1, value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeMuff(this._doc, oldValue, newValue));
+            this._imuteButton = button({ style: "width: 27px; margin-left: 0.5em;", type: "button" });
+            this._iMmuteButton = button({ style: "width: 27px; margin-left: 0.5em;", type: "button" });
             this._partSelect = buildOptions(select({}), Config.partNames);
             this._instrumentTypeSelect = buildOptionsWithSpecificValues(select({}), Config.pitchChannelTypeNames, Config.pitchChannelTypeValues);
-            this._instrumentTypeSelectRow = div({ class: "selectRow" }, span({}, div({}, "Type: ")), this._instrumentTypeHint, div({ class: "selectContainer" }, this._instrumentTypeSelect));
+            this._instrumentTypeSelectRow = div({ class: "selectRow" }, span({}, div({ style: "display:flex;" }, "Type: ", this._instrumentTypeHint)), div({ class: "selectContainer" }, this._instrumentTypeSelect));
             this._algorithmSelect = buildOptions(select({}), Config.operatorAlgorithmNames);
             this._algorithmSelectRow = div({ class: "selectRow" }, span({}, div({}, "Algorithm: ")), div({ class: "selectContainer" }, this._algorithmSelect));
             this._instrumentSelect = select({});
             this._instrumentInput = input({ class: "numberInput", type: "number", min: 1 });
             this._instrumentSelectRow = div({ class: "selectRow", style: "display: none;" }, span({}, div({}, "Instrument: ")), div({ class: "inputContainer" }, this._instrumentInput));
-            this._instrumentVolumeSlider = new Slider(input({ style: "margin: 8px; width: 60px;", type: "range", min: "-9", max: "0", value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeVolume(this._doc, oldValue, -newValue));
-            this._instrumentMVolumeSlider = new Slider(input({ style: "margin: 8px; width: 60px;", type: "range", min: "-5", max: "0", value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeVolume(this._doc, oldValue, -newValue));
-            this._instrumentVolumeSliderRow = div({ class: "selectRow" }, span({}, div({}, "Volume: ")), this._instrumentVolumeSlider.input, this._imuteButton);
-            this._instrumentMVolumeSliderRow = div({ class: "selectRow" }, span({}, div({}, "Volume: ")), this._instrumentMVolumeSlider.input, this._iMmuteButton);
+            this._instrumentVolumeSlider = new Slider(input({ type: "range", min: "-9", max: "0", value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeVolume(this._doc, oldValue, -newValue));
+            this._instrumentMVolumeSlider = new Slider(input({ type: "range", min: "-5", max: "0", value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeVolume(this._doc, oldValue, -newValue));
+            this._instrumentVolumeSliderRow = div({ class: "selectRow" }, span({}, div({}, "Volume: ")), div({ style: "display: flex; flex-direction: row;" }, this._instrumentVolumeSlider.input, this._imuteButton));
+            this._instrumentMVolumeSliderRow = div({ class: "selectRow" }, span({}, div({}, "Volume: ")), div({ style: "display: flex; flex-direction: row;" }, this._instrumentMVolumeSlider.input, this._iMmuteButton));
             this._SettingsLabel = div({ style: "margin: 3px 0; text-align: center; color: rgb(170, 170, 170);" }, div({}, "Settings"));
             this._advancedInstrumentSettingsLabel = div({ style: "margin: 3px 0; text-align: center;" }, div({}, "Advanced Instrument Settings"));
             this._waveSelect = buildOptions(select({}), Config.waveNames);
@@ -10985,19 +11008,19 @@ var beepbox = (function (exports) {
             this._effectSelect = buildOptions(select({}), Config.effectNames);
             this._effectSelectRow = div({ class: "selectRow" }, span({}, div({}, "Effect: ")), div({ class: "selectContainer" }, this._effectSelect));
             this._harmSelect = buildOptions(select({}), Config.harmDisplay);
-            this._harmSelectRow = div({ class: "selectRow" }, span({}, div({}, "Chord: ")), this._chorusHint, div({ class: "selectContainer" }, this._harmSelect));
+            this._harmSelectRow = div({ class: "selectRow" }, span({}, div({ style: "display:flex;" }, "Chord: ", this._chorusHint)), div({ class: "selectContainer" }, this._harmSelect));
             this._octoffSelect = buildOptions(select({}), Config.octoffNames);
             this._octoffSelectRow = div({ class: "selectRow" }, span({}, div({}, "Octave Offset: ")), div({ class: "selectContainer" }, this._octoffSelect));
             this._fmChorusSelect = buildOptions(select({}), Config.fmChorusDisplay);
             this._fmChorusSelectRow = div({ class: "selectRow" }, span({}, div({}, "FM Chorus: ")), div({ class: "selectContainer" }, this._fmChorusSelect));
-            this._ipanSlider = new Slider(input({ style: "margin: 8px; width: 100px;", type: "range", min: "-8", max: "0", value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeIpan(this._doc, oldValue, -newValue));
-            this._ipanSliderRow = div({ class: "selectRow" }, span({}, div({}, "Panning: ")), span({}, div({}, "L")), this._ipanSlider.input, span({}, div({}, "R")));
+            this._ipanSlider = new Slider(input({ type: "range", min: "-8", max: "0", value: "0", step: "1" }), this._doc, (oldValue, newValue) => new ChangeIpan(this._doc, oldValue, -newValue));
+            this._ipanSliderRow = div({ class: "selectRow" }, span({}, div({}, "Panning: ")), div({ style: "display:flex;" }, span({ style: "margin-right: 0.5em; align-content: center;" }, div({}, "L")), this._ipanSlider.input, span({ style: "margin-left: 0.5em; align-content: center;" }, div({}, "R"))));
             this._phaseModGroup = div({ style: "display: flex; flex-direction: column; display: none;" });
             this._feedbackTypeSelect = buildOptions(select({}), Config.operatorFeedbackNames);
             this._feedbackRow1 = div({ class: "selectRow" }, span({}, div({}, "Feedback:")), div({ class: "selectContainer" }, this._feedbackTypeSelect));
-            this._feedbackAmplitudeSlider = new Slider(input({ style: "margin: 0px; width: 4em;", type: "range", min: "0", max: Config.operatorAmplitudeMax, value: "0", step: "1", title: "Feedback Amplitude" }), this._doc, (oldValue, newValue) => new ChangeFeedbackAmplitude(this._doc, oldValue, newValue));
+            this._feedbackAmplitudeSlider = new Slider(input({ style: "margin: 0px; flex: 1; width: 4em;", type: "range", min: "0", max: Config.operatorAmplitudeMax, value: "0", step: "1", title: "Feedback Amplitude" }), this._doc, (oldValue, newValue) => new ChangeFeedbackAmplitude(this._doc, oldValue, newValue));
             this._feedbackEnvelopeSelect = buildOptions(select({ style: "width: 100%;", title: "Feedback Envelope" }), Config.operatorEnvelopeNames);
-            this._feedbackRow2 = div({ class: "operatorRow" }, div({ style: "margin-right: .1em; visibility: hidden;" }, div({}, 1 + ".")), div({ style: "width: 3em; margin-right: .3em;" }), this._feedbackAmplitudeSlider.input, div({ class: "selectContainer", style: "width: 5em; margin-left: .3em;" }, this._feedbackEnvelopeSelect));
+            this._feedbackRow2 = div({ class: "operatorRow" }, this._feedbackAmplitudeSlider.input, div({ class: "selectContainer", style: "width:0; margin-left: .3em;" }, this._feedbackEnvelopeSelect));
             this._songSettingsButton = button({ style: "flex: 1; border-bottom: solid 2px var(--link-accent);" }, "Song");
             this._instSettingsButton = button({ style: "flex: 1;" }, "Instrument");
             this._settingsTabs = div({ style: "display: flex; gap: 3px;" }, this._songSettingsButton, this._instSettingsButton);
@@ -11005,7 +11028,7 @@ var beepbox = (function (exports) {
             this._songSettingsGroup = div({ class: "editor-song-settings" }, div({ class: "selectRow" }, span({}, div({}, "Scale: ")), div({ class: "selectContainer", style: "margin: 3px 0; text-align: center; color: #ccc;" }, this._scaleSelect)), div({ class: "selectRow" }, span({}, div({}, "Key: ")), div({ class: "selectContainer", style: "margin: 3px 0; text-align: center; color: #ccc;" }, this._keySelect)), div({ class: "selectRow" }, span({}, div({}, "Tempo: ")), div({ style: "display: flex; flex-direction: row;" }, this._tempoSlider.input, this._tempoStepper)), div({ class: "selectRow" }, span({}, div({}, "Reverb: ")), this._reverbSlider.input), div({ class: "selectRow" }, span({}, div({}, "Rhythm: ")), div({ class: "selectContainer", style: "margin: 3px 0; text-align: center; color: #ccc;" }, this._partSelect)));
             this._advancedInstrumentSettingsGroup = div({}, this._advancedInstrumentSettingsLabel, this._ipanSliderRow, this._harmSelectRow, this._octoffSelectRow, this._fmChorusSelectRow);
             this._promptContainer = div({ class: "promptContainer", id: "promptContainer", style: "display: none;" });
-            this._advancedSongSettings = div({ class: "editor-song-settings", style: "margin: 0px 5px;" }, div({ style: "margin: 3px 0; text-align: center;" }, div({}, "Advanced Song Settings")), div({ class: "selectRow" }, span({}, div({}, "Mix: ")), div({ class: "selectContainer" }, this._mixSelectRow)), div({ class: "selectRow" }, span({}, div({}, "Sample Rate: ")), div({ class: "selectContainer" }, this._sampleRateSelect)), div({ class: "selectRow" }, span({}, div({}, "Blending: ")), this._blendSlider.input), div({ class: "selectRow" }, span({}, div({}, "Riff: ")), this._riffSlider.input), div({ class: "selectRow" }, span({}, div({}, "Detune: ")), this._detuneSlider.input), div({ class: "selectRow" }, span({}, div({}, "Muff: ")), this._muffSlider.input));
+            this._advancedSongSettings = div({ class: "editor-song-settings", style: "margin: 0px 5px;" }, div({ style: "margin: 3px 0; text-align: center;" }, div({}, "Advanced Song Settings")), div({ class: "selectRow" }, span({}, div({ style: "display: flex;" }, "Mix: ", this._mixHint)), div({ class: "selectContainer" }, this._mixSelectRow)), div({ class: "selectRow" }, span({}, div({}, "Sample Rate: ")), div({ class: "selectContainer" }, this._sampleRateSelect)), div({ class: "selectRow" }, span({}, div({}, "Blending: ")), this._blendSlider.input), div({ class: "selectRow" }, span({}, div({}, "Riff: ")), this._riffSlider.input), div({ class: "selectRow" }, span({}, div({}, "Detune: ")), this._detuneSlider.input), div({ class: "selectRow" }, span({}, div({}, "Muff: ")), this._muffSlider.input));
             this._advancedSettingsContainer = div({ class: "advanced-settings-area", style: "margin: 0px 5px;" }, div({ class: "editor-widgets" }, div({ style: "text-align: center;" }, div({}, "Advanced Settings")), div({ style: "margin: 2px 0; display: flex; flex-direction: row; align-items: center;" }), div({ class: "editor-menus" }, div({ style: "margin: 5px 0; display: flex; flex-direction: row; justify-content: space-between;" }, this._prevBarButton, this._undoButton, this._redoButton, this._nextBarButton)), div({ class: "editor-settings" }, this._advancedSongSettings, div({ class: "editor-instrument-settings" }, this._advancedInstrumentSettingsGroup))));
             this.mainLayer = div({ class: "beepboxEditor", tabIndex: "0" }, this._editorBox, this._trackEditorBox, div({ class: "settings-area" }, div({ class: "title", style: "align-items: center; display: flex; justify-content: center;" }, div({}, "Neo NepBox")), div({ class: "controller", style: "margin: 5px 0; gap: 3px; display: flex; flex-direction: column; align-items: center;" }, div({ style: "display:flex; flex-direction:row;" }, SVG.svg({ width: "2em", height: "2em", viewBox: "0 0 26 26" }, SVG.path({ d: "M 4 17 L 4 9 L 8 9 L 12 5 L 12 21 L 8 17 z", fill: ColorConfig.volumeIcon }), SVG.path({ d: "M 15 11 L 16 10 A 7.2 7.2 0 0 1 16 16 L 15 15 A 5.8 5.8 0 0 0 15 12 z", fill: ColorConfig.volumeIcon }), SVG.path({ d: "M 18 8 L 19 7 A 11.5 11.5 0 0 1 19 19 L 18 18 A 10.1 10.1 0 0 0 18 8 z", fill: ColorConfig.volumeIcon })), this._volumeSlider), div({ style: "display: flex; flex-direction: row; align-items: center; width:100%; gap: 3px;" }, this._playButton, this._prevBarButton, this._nextBarButton)), div({ class: "editor-widgets" }, div({ class: "editor-menus" }, div({ class: "selectContainer menu" }, this._fileMenu, SVG.svg({ style: "flex-shrink: 0; position: absolute; left: 0; top: 50%; margin-top: -1em; pointer-events: none;", width: "2em", height: "2em", viewBox: "-5 -21 26 26" }, SVG.path({ d: "M 0 0 L 16 0 L 16 -13 L 10 -13 L 8 -16 L 0 -16 L 0 -13 z", fill: "currentColor" }))), div({ class: "selectContainer menu" }, this._editMenu, SVG.svg({ style: "flex-shrink: 0; position: absolute; left: 0; top: 50%; margin-top: -1em; pointer-events: none;", width: "2em", height: "2em", viewBox: "-5 -21 26 26" }, SVG.path({ d: "M 0 0 L 1 -4 L 4 -1 z M 2 -5 L 10 -13 L 13 -10 L 5 -2 zM 11 -14 L 13 -16 L 14 -16 L 16 -14 L 16 -13 L 14 -11 z", fill: "currentColor" }))), div({ class: "selectContainer menu" }, this._optionsMenu, SVG.svg({ style: "flex-shrink: 0; position: absolute; left: 0; top: 50%; margin-top: -1em; pointer-events: none;", width: "2em", height: "2em", viewBox: "-13 -13 26 26" }, SVG.path({ d: "M 5.78 -1.6 L 7.93 -0.94 L 7.93 0.94 L 5.78 1.6 L 4.85 3.53 L 5.68 5.61 L 4.21 6.78 L 2.36 5.52 L 0.27 5.99 L -0.85 7.94 L -2.68 7.52 L -2.84 5.28 L -4.52 3.95 L -6.73 4.28 L -7.55 2.59 L -5.9 1.07 L -5.9 -1.07 L -7.55 -2.59 L -6.73 -4.28 L -4.52 -3.95 L -2.84 -5.28 L -2.68 -7.52 L -0.85 -7.94 L 0.27 -5.99 L 2.36 -5.52 L 4.21 -6.78 L 5.68 -5.61 L 4.85 -3.53 M 2.92 0.67 L 2.92 -0.67 L 2.35 -1.87 L 1.3 -2.7 L 0 -3 L -1.3 -2.7 L -2.35 -1.87 L -2.92 -0.67 L -2.92 0.67 L -2.35 1.87 L -1.3 2.7 L -0 3 L 1.3 2.7 L 2.35 1.87 z", fill: "currentColor" })))))), div({ class: "song-settings-area editor-settings" }, this._SettingsLabel, this._settingsTabs, this._songSettingsGroup, div({ class: "editor-instrument-settings" }, this._instrumentSettingsGroup)), this._advancedSettingsContainer, this._promptContainer);
             this._changeTranspose = null;
@@ -11062,6 +11085,9 @@ var beepbox = (function (exports) {
                 const instrument = channel.instruments[instrumentIndex];
                 const wasActive = this.mainLayer.contains(document.activeElement);
                 let activeElement = document.activeElement ? document.activeElement : document.activeElement;
+                if (this._doc.channel >= this._doc.song.pitchChannelCount + this._doc.song.drumChannelCount) {
+                    this._piano.forceRender();
+                }
                 setSelectedIndex(this._scaleSelect, this._doc.song.scale);
                 setSelectedIndex(this._mixSelect, this._doc.song.mix);
                 setSelectedIndex(this._sampleRateSelect, this._doc.song.sampleRate);
@@ -11164,7 +11190,6 @@ var beepbox = (function (exports) {
                 setSelectedIndex(this._algorithmSelect, instrument.algorithm);
                 this._instrumentSelectRow.style.display = (this._doc.song.instrumentsPerChannel > 1) ? "" : "none";
                 this._instrumentSelectRow.style.visibility = (pattern == null) ? "hidden" : "";
-                console.log(this._doc.song.instrumentsPerChannel);
                 if (this._instrumentInput.max != String(this._doc.song.instrumentsPerChannel)) {
                     this._instrumentInput.max = String(this._doc.song.instrumentsPerChannel);
                 }
@@ -11997,7 +12022,7 @@ var beepbox = (function (exports) {
             this.showScrollBar = localStorage.getItem("showScrollBar") != "false";
             this.showVolumeBar = localStorage.getItem("showVolumeBar") == "true";
             this.advancedSettings = localStorage.getItem("advancedSettings") != "false";
-            this.visibleOctaves = Preferences.defaultVisibleOctaves;
+            this.visibleOctaves = localStorage.getItem("visibleOctaves") != null ? Number(localStorage.getItem("visibleOctaves")) : Preferences.defaultVisibleOctaves;
             this.layout = localStorage.getItem("layout") || "small";
             this.volume = localStorage.getItem("volume") != null ? Number(localStorage.getItem("volume")) : 75;
         }
@@ -12011,6 +12036,7 @@ var beepbox = (function (exports) {
             localStorage.setItem("showScrollBar", this.showScrollBar ? "true" : "false");
             localStorage.setItem("showVolumeBar", this.showVolumeBar ? "true" : "false");
             localStorage.setItem("advancedSettings", this.advancedSettings ? "true" : "false");
+            localStorage.setItem("visibleOctaves", String(this.visibleOctaves));
             localStorage.setItem("volume", String(this.volume));
         }
     }
@@ -12183,14 +12209,13 @@ var beepbox = (function (exports) {
             return pattern == null ? 0 : pattern.instrument;
         }
         getVisibleOctaveCount() {
-            return this.getFullScreen() ? this.prefs.visibleOctaves : Preferences.defaultVisibleOctaves;
+            return this.prefs.visibleOctaves;
         }
         getVisiblePitchCount() {
             return this.getVisibleOctaveCount() * Config.pitchesPerOctave + 1;
         }
         getBaseVisibleOctave(channel) {
-            const visibleOctaveCount = this.getVisibleOctaveCount();
-            return Math.max(0, Math.min(Config.pitchOctaves - visibleOctaveCount, Math.ceil(this.song.channels[channel].octave - visibleOctaveCount * 0.5)));
+            return this.song.channels[channel].octave;
         }
     }
 
@@ -12381,6 +12406,7 @@ background: ${ColorConfig.pageMargin};
 /* Use psuedo-elements to add cross-browser up & down arrows to select elements: */
 .beepboxEditor .selectContainer {
 	position: relative;
+	width: 100%;
 }
 .beepboxEditor .selectContainer:not(.menu)::before {
 	content: "";
@@ -12427,6 +12453,8 @@ background: ${ColorConfig.pageMargin};
 	font-size: inherit;
 	cursor: pointer;
 	font-family: inherit;
+
+	width:100%;
 
 	-webkit-appearance:none;
 	-moz-appearance: none;
@@ -12582,9 +12610,8 @@ background: ${ColorConfig.pageMargin};
 
 .beepboxEditor .selectRow {
 	margin: 0;
-	height: 2.5em;
 	display: flex;
-	flex-direction: row;
+	flex-direction: column;
 	align-items: center;
 	justify-content: space-between;
 }
@@ -12847,11 +12874,8 @@ background: ${ColorConfig.pageMargin};
 	.beepboxEditor .editor-right-widgets {
 		flex-grow: 1;
 	}
-	.beepboxEditor .editor-settings input, .beepboxEditor .editor-settings select {
-		width: 8.6em;
-	}
 	.beepboxEditor .editor-right-settings input, .beepboxEditor .editor-right-settings select {
-		width: 8.6em;
+		width: 100%;
 	}
 	.beepboxEditor .editor-menus > * {
 		flex-grow: 1;
@@ -12955,10 +12979,10 @@ background: ${ColorConfig.pageMargin};
 		margin: 0 .2em;
 	}
 	.beepboxEditor .editor-settings input, .beepboxEditor .editor-settings .selectContainer {
-		width: 60%;
+		width: 100%;
 	}
 	.beepboxEditor .editor-right-settings input, .beepboxEditor .editor-right-settings .selectContainer {
-		width: 60%;
+		width: 100%;
 	}
 	.beepboxEditor .editor-settings select {
 		width: 100%;
